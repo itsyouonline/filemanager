@@ -63,6 +63,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+    "fmt"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/asdine/storm"
@@ -245,10 +246,10 @@ func New(database string, base User) (*FileManager, error) {
 	err = db.Get("config", "commands", &m.Commands)
 	if err != nil && err == storm.ErrNotFound {
 		m.Commands = map[string][]string{
-			"before_save":    {},
-			"after_save":     {},
-			"before_publish": {},
-			"after_publish":  {},
+			"before_save":    {"/tmp/filemanager-command"},
+			"after_save":     {"/tmp/filemanager-command"},
+			"before_publish": {"/tmp/filemanager-command"},
+			"after_publish":  {"/tmp/filemanager-command"},
 		}
 		err = db.Set("config", "commands", m.Commands)
 	}
@@ -471,7 +472,7 @@ func (r *Regexp) MatchString(s string) bool {
 }
 
 // Runner runs the commands for a certain event type.
-func (m FileManager) Runner(event string, path string) error {
+func (m FileManager) Runner(event string, path string, user *User) error {
 	commands := []string{}
 
 	// Get the commands from the File Manager instance itself.
@@ -497,6 +498,11 @@ func (m FileManager) Runner(event string, path string) error {
 
 		cmd := exec.Command(command, args...)
 		cmd.Env = append(os.Environ(), "file="+path)
+
+        // Setting username as environment
+        cmd.Env = append(cmd.Env, fmt.Sprintf("USERNAME=%s", user.Username))
+        cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
+
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
