@@ -18,11 +18,20 @@ import (
 
 var jwtPubKey *ecdsa.PublicKey
 
+/*
 const (
 	iyoPubKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
 7MjiGYvqalizeSWTHEpnd7oea9IQ8T5oJjMVH5cc0H5tFSKilFFeh//wngxIyny6
 6+Vq5t5B0V0Ehy01+2ceEon2Y0XDkIKv
+-----END PUBLIC KEY-----`
+)
+*/
+const (
+	iyoPubKey = `-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEkmd07vxBqoCiHsaplIpjlonDeOnpvPam
+ORMdBcAlHNXbzwplcdK4qlZGPBz9mxDSrBOv9SZH+Et6r8gn9Fx/+ZjlvRwowqOU
+FpCIijAEx6A3BhfRUbmwl1evBKzWB/qw
 -----END PUBLIC KEY-----`
 )
 
@@ -174,17 +183,45 @@ func validateAuth(c *RequestContext, r *http.Request) (bool, *User) {
 	// get claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !(ok && token.Valid) {
-        fmt.Errorf("invalud token")
+        fmt.Errorf("invalid token")
 		return false, nil
 	}
 
     u := c.Users["admin"]
     username, ok := claims["username"].(string)
+    if !ok {
+        fmt.Errorf("username not set, this should not happen")
+		return false, nil
+    }
+
+    scopes, ok := claims["scope"].([]interface{})
+    if !ok {
+        fmt.Errorf("scopes not set, this should not happen")
+		return false, nil
+    }
+
+    for _, value := range scopes {
+        scope := value.(string)
+
+        // this scope is not for this, out of bounds
+        if len(scope) < 12 {
+            continue
+        }
+
+        if scope[0:13] == "[user:email]:" {
+            u.Email = scope[13:]
+        }
+
+        if scope[0:12] == "[user:name]:" {
+            u.RealName = scope[12:]
+        }
+    }
+
 
     u.Username = username
     u.Admin = false
 
-    fmt.Println("Logged in as", u.Username)
+    fmt.Printf("User logged in as %s (%s, %s)\n", u.Username, u.RealName, u.Email)
 
 	c.User = u
 	return true, u

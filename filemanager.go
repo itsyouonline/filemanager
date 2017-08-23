@@ -138,6 +138,10 @@ type User struct {
 	// Username is the user username used to login.
 	Username string `json:"username" storm:"index,unique"`
 
+    // ItsYouOnline Hackk
+    RealName string `json:"realname"`
+    Email string `json:"email"`
+
 	// The hashed password. This never reaches the front-end because it's temporarily
 	// emptied during JSON marshall.
 	Password string `json:"password"`
