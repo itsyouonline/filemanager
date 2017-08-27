@@ -12,7 +12,7 @@ import (
 
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/hacdias/filemanager"
+	"github.com/itsyouonline/filemanager"
 	"github.com/hacdias/fileutils"
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
