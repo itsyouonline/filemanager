@@ -18,7 +18,7 @@ import (
 
 var jwtPubKey *ecdsa.PublicKey
 
-/*
+
 const (
 	iyoPubKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
@@ -26,7 +26,9 @@ MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
 6+Vq5t5B0V0Ehy01+2ceEon2Y0XDkIKv
 -----END PUBLIC KEY-----`
 )
-*/
+
+/*
+// staging
 const (
 	iyoPubKey = `-----BEGIN PUBLIC KEY-----
 MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEkmd07vxBqoCiHsaplIpjlonDeOnpvPam
@@ -34,6 +36,7 @@ ORMdBcAlHNXbzwplcdK4qlZGPBz9mxDSrBOv9SZH+Et6r8gn9Fx/+ZjlvRwowqOU
 FpCIijAEx6A3BhfRUbmwl1evBKzWB/qw
 -----END PUBLIC KEY-----`
 )
+*/
 
 func init() {
 	var err error
