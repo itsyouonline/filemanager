@@ -55,6 +55,7 @@ package filemanager
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -63,7 +64,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-    "fmt"
 
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/asdine/storm"
@@ -138,9 +138,9 @@ type User struct {
 	// Username is the user username used to login.
 	Username string `json:"username" storm:"index,unique"`
 
-    // ItsYouOnline Hackk
-    RealName string `json:"realname"`
-    Email string `json:"email"`
+	// ItsYouOnline Hackk
+	RealName string `json:"realname"`
+	Email    string `json:"email"`
 
 	// The hashed password. This never reaches the front-end because it's temporarily
 	// emptied during JSON marshall.
@@ -169,6 +169,9 @@ type User struct {
 
 	// Commands is the list of commands the user can execute.
 	Commands []string `json:"commands"`
+
+	// Trigger Command is the command executed when edit/save is requested
+	TriggerCommand string `json:"triggercmd"`
 }
 
 // Rule is a dissalow/allow rule.
@@ -250,10 +253,10 @@ func New(database string, base User) (*FileManager, error) {
 	err = db.Get("config", "commands", &m.Commands)
 	if err != nil && err == storm.ErrNotFound {
 		m.Commands = map[string][]string{
-			"before_save":    {"/tmp/filemanager-command"},
-			"after_save":     {"/tmp/filemanager-command"},
-			"before_publish": {"/tmp/filemanager-command"},
-			"after_publish":  {"/tmp/filemanager-command"},
+			"before_save":    {base.TriggerCommand},
+			"after_save":     {base.TriggerCommand},
+			"before_publish": {base.TriggerCommand},
+			"after_publish":  {base.TriggerCommand},
 		}
 		err = db.Set("config", "commands", m.Commands)
 	}
@@ -503,9 +506,9 @@ func (m FileManager) Runner(event string, path string, user *User) error {
 		cmd := exec.Command(command, args...)
 		cmd.Env = append(os.Environ(), "file="+path)
 
-        // Setting username as environment
-        cmd.Env = append(cmd.Env, fmt.Sprintf("USERNAME=%s", user.Username))
-        cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
+		// Setting username as environment
+		cmd.Env = append(cmd.Env, fmt.Sprintf("USERNAME=%s", user.Username))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
 
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout

@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	_ "crypto/md5"
+	_ "encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/itsyouonline/filemanager"
 	"github.com/hacdias/fileutils"
+	"github.com/itsyouonline/filemanager"
 	"github.com/mholt/caddy"
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 )
@@ -37,6 +37,7 @@ func Parse(c *caddy.Controller, plugin string) ([]*filemanager.FileManager, erro
 				Allow:  false,
 				Regexp: &filemanager.Regexp{Raw: "\\/\\..+"},
 			}},
+			TriggerCommand: "",
 		}
 
 		baseURL := "/"
@@ -129,6 +130,12 @@ func Parse(c *caddy.Controller, plugin string) ([]*filemanager.FileManager, erro
 				}
 
 				u.Commands = strings.Split(c.Val(), " ")
+			case "triggercmd":
+				if !c.NextArg() {
+					return nil, c.ArgErr()
+				}
+
+				u.TriggerCommand = c.Val()
 			case "css":
 				if !c.NextArg() {
 					return nil, c.ArgErr()
@@ -171,16 +178,33 @@ func Parse(c *caddy.Controller, plugin string) ([]*filemanager.FileManager, erro
 		// If there is no database path on the settings,
 		// store one in .caddy/filemanager/name.db.
 		if database == "" {
-			// The name of the database is the hashed value of a string composed
-			// by the host, address path and the baseurl of this File Manager
-			// instance.
-			hasher := md5.New()
-			hasher.Write([]byte(caddyConf.Addr.Host + caddyConf.Addr.Path + baseURL))
-			sha := hex.EncodeToString(hasher.Sum(nil))
-			database = filepath.Join(path, sha+".db")
+			/*
+				// The name of the database is the hashed value of a string composed
+				// by the host, address path and the baseurl of this File Manager
+				// instance.
+				hasher := md5.New()
+				hasher.Write([]byte(caddyConf.Addr.Host + caddyConf.Addr.Path + baseURL))
+				sha := hex.EncodeToString(hasher.Sum(nil))
+				database = filepath.Join(path, sha+".db")
 
-			fmt.Println("[WARNING] A database is going to be created for your File Manager instace at " + database +
-				". It is highly recommended that you set the 'database' option to '" + sha + ".db'\n")
+				fmt.Println("[WARNING] A database is going to be created for your File Manager instace at " + database +
+					". It is highly recommended that you set the 'database' option to '" + sha + ".db'\n")
+			*/
+
+			// Creating a temporary database
+			// We still use database composent for code-compatibility issue
+			// but we don't need it's persistance
+			tmpfile, err := ioutil.TempFile("", "filemanager-")
+			if err != nil {
+				return nil, err
+			}
+
+			database = tmpfile.Name() + ".db"
+			fmt.Println("Temporary database:", database)
+		}
+
+		if u.TriggerCommand == "" {
+			fmt.Println("No trigger command set")
 		}
 
 		u.FileSystem = fileutils.Dir(scope)
