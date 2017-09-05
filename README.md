@@ -1,3 +1,26 @@
+# ItsYou.Online Integration
+
+This is a fork of the original Filemanager Caddy plugin.
+
+This fork allows you to use the filemanager with itsyouonline authentification and management interface.
+
+## What changed
+
+- The integration is made on the `master-iyo-auth` branch, `master` is kept for upstream update.
+- Only a small change on the auth login page was made to the front-end, all the others change are made on the backend
+- The database is still used, but it's a temporary file now, and a new one is created on each instance
+  - The database contains informations like commands trigger etc. and to avoid lot of code change, keeping it is easier
+- We fake the login procedure and we check the jwt provided to the page with itsyouonline privacy settings
+- You can add a new option `triggercmd` to the Caddyfile which point to a executable to execute on each (save/edit) action
+- The triggercmd will be set with:
+  - The working directory contains the directory where the file is edited
+  - Environment variables:
+    - `file` is the target file
+    - `USERNAME` is the itsyouonline username
+    - `REALNAME` is the itsyouonline user real name
+    - `USEREMAIL` is the itsyouonline user email address
+    - `TRIGGER` is the trigger name: `before_save`, `after_save`, `before_publish`, `after_publish`
+
 ![Preview](https://user-images.githubusercontent.com/5447088/28537288-39be4288-70a2-11e7-8ce9-0813d59f46b7.gif)
 
 # filemanager
