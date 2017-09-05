@@ -508,6 +508,8 @@ func (m FileManager) Runner(event string, path string, user *User) error {
 
 		// Setting username as environment
 		cmd.Env = append(cmd.Env, fmt.Sprintf("USERNAME=%s", user.Username))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("REALNAME=%s", user.RealName))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("USEREMAIL=%s", user.Email))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
 
 		cmd.Stdin = os.Stdin
