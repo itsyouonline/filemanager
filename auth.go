@@ -111,7 +111,7 @@ func printToken(c *RequestContext, w http.ResponseWriter) (int, error) {
 	// Builds the claims.
 	claims := claims{
 		u,
-		c.NoAuth,
+		true, // fake the NoAuth, we use Auth but by disabling here, we disable UI settings
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "File Manager",
