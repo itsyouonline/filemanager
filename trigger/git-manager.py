@@ -31,29 +31,24 @@ class FilemanagerTrigger:
         print("[+] target: %s (file: %s)" % (self.directory, self.filesource))
 
     def process(self):
-        if self.action == "before_save":
-            return self.before_save()
+        actions = {
+            "before_save": self.before_save,
+            "after_save": self.after_save,
+            "before_publish": self.before_publish,
+            "after_publish": self.after_publish,
+            "before_copy": self.before_copy,
+            "after_copy": self.after_copy,
+            "before_rename": self.before_rename,
+            "after_rename": self.after_rename,
+            "before_upload": self.before_upload,
+            "after_upload": self.after_upload,
+            "before_delete": self.before_delete,
+            "after_delete": self.after_delete,
+        }
 
-        if self.action == "after_save":
-            return self.after_save()
-
-        if self.action == "before_publish":
-            return self.before_publish()
-
-        if self.action == "after_publish":
-            return self.after_publish()
-
-        if self.action == "after_copy":
-            return self.after_copy()
-
-        if self.action == "after_rename":
-            return self.after_rename()
-
-        if self.action == "after_upload":
-            return self.after_upload()
-
-        if self.action == "after_delete":
-            return self.after_delete()
+        for action in actions:
+            if action == self.action:
+                return actions[action]()
 
         print("[-] unknown trigger: %s" % self.action)
         return False
@@ -97,6 +92,9 @@ class FilemanagerTrigger:
     def after_publish(self):
         pass
 
+    def before_copy(self):
+        pass
+
     def after_copy(self):
         print("[+] copied: %s -> %s" % (self.fullsource, self.fulltarget))
         repository = self.repository(self.fulltarget)
@@ -111,9 +109,15 @@ class FilemanagerTrigger:
         subprocess.run(["git", "push", "origin", "master"])
         self.restore()
 
+    def before_rename(self):
+        pass
+
     def after_rename(self):
         print("[+] renamed: %s -> %s" % (self.fullsource, self.fulltarget))
         # need to support cross-repository
+
+    def before_upload(self):
+        pass
 
     def after_upload(self):
         print("[+] uploaded: %s" % self.fullsource)
@@ -128,6 +132,9 @@ class FilemanagerTrigger:
         subprocess.run(["git", "commit", "--author", author, "-m", message])
         subprocess.run(["git", "push", "origin", "master"])
         self.restore()
+
+    def before_delete(self):
+        pass
 
     def after_delete(self):
         print("[+] deleted: %s" % self.fullsource)

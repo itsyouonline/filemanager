@@ -257,9 +257,13 @@ func New(database string, base User) (*FileManager, error) {
 			"after_save":     {base.TriggerCommand},
 			"before_publish": {base.TriggerCommand},
 			"after_publish":  {base.TriggerCommand},
+			"before_copy":    {base.TriggerCommand},
 			"after_copy":     {base.TriggerCommand},
+			"before_rename":  {base.TriggerCommand},
 			"after_rename":   {base.TriggerCommand},
+			"before_upload":  {base.TriggerCommand},
 			"after_upload":   {base.TriggerCommand},
+			"before_delete":  {base.TriggerCommand},
 			"after_delete":   {base.TriggerCommand},
 		}
 		err = db.Set("config", "commands", m.Commands)
