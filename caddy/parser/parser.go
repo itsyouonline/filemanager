@@ -136,6 +136,12 @@ func Parse(c *caddy.Controller, plugin string) ([]*filemanager.FileManager, erro
 				}
 
 				u.TriggerCommand = c.Val()
+			case "root":
+				if !c.NextArg() {
+					return nil, c.ArgErr()
+				}
+
+				scope = c.Val()
 			case "css":
 				if !c.NextArg() {
 					return nil, c.ArgErr()
