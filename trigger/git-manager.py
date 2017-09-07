@@ -114,7 +114,47 @@ class FilemanagerTrigger:
 
     def after_rename(self):
         print("[+] renamed: %s -> %s" % (self.fullsource, self.fulltarget))
-        # need to support cross-repository
+
+        if self.repository(self.fullsource) == self.repository(self.fulltarget):
+            # we rename in the same repository, let just rename it
+            repository = self.repository(self.fullsource)
+            oldname = os.path.basename(self.fullsource)
+            newname = os.path.basename(self.fulltarget)
+
+            author = "%s <%s>" % (self.realname, self.email)
+            message = "Rename %s -> %s [by %s]" % (oldname, newname, self.username)
+
+            self.move(repository)
+            subprocess.run(["git", "add", "-u", oldname])
+            subprocess.run(["git", "add", newname])
+            subprocess.run(["git", "commit", "--author", author, "-m", message])
+            subprocess.run(["git", "push", "origin", "master"])
+            self.restore()
+        else:
+            # this is a cross-repository rename, let's update both of them
+            repository = self.repository(self.fullsource)
+            targetfile = os.path.basename(self.fullsource)
+
+            author = "%s <%s>" % (self.realname, self.email)
+            message = "Remove (from rename) %s [by %s]" % (targetfile, self.username)
+
+            self.move(repository)
+            subprocess.run(["git", "add", "-u", targetfile])
+            subprocess.run(["git", "commit", "--author", author, "-m", message])
+            subprocess.run(["git", "push", "origin", "master"])
+            self.restore()
+
+            repository = self.repository(self.fulltarget)
+            targetfile = os.path.basename(self.fulltarget)
+
+            author = "%s <%s>" % (self.realname, self.email)
+            message = "Insert (by rename) %s [by %s]" % (targetfile, self.username)
+
+            self.move(repository)
+            subprocess.run(["git", "add", targetfile])
+            subprocess.run(["git", "commit", "--author", author, "-m", message])
+            subprocess.run(["git", "push", "origin", "master"])
+            self.restore()
 
     def before_upload(self):
         pass
