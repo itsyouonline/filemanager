@@ -259,6 +259,8 @@ func New(database string, base User) (*FileManager, error) {
 			"after_publish":  {base.TriggerCommand},
 			"after_copy":     {base.TriggerCommand},
 			"after_rename":   {base.TriggerCommand},
+			"after_upload":   {base.TriggerCommand},
+			"after_delete":   {base.TriggerCommand},
 		}
 		err = db.Set("config", "commands", m.Commands)
 	}
@@ -516,7 +518,7 @@ func (m FileManager) Runner(event string, path string, destination string, user 
 		cmd.Env = append(cmd.Env, fmt.Sprintf("USEREMAIL=%s", user.Email))
 
 		if destination != "" {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("DESTINATION=%s", extra_path))
+			cmd.Env = append(cmd.Env, fmt.Sprintf("DESTINATION=%s", destination))
 		}
 
 		cmd.Stdin = os.Stdin

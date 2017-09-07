@@ -146,6 +146,11 @@ func resourceDeleteHandler(c *RequestContext, w http.ResponseWriter, r *http.Req
 		return errorToHTTP(err, true), err
 	}
 
+	// Fire the trigger
+	if err := c.Runner("after_delete", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	return http.StatusOK, nil
 }
 
@@ -217,6 +222,12 @@ func resourcePostPutHandler(c *RequestContext, w http.ResponseWriter, r *http.Re
 	// Writes the ETag Header.
 	etag := fmt.Sprintf(`"%x%x"`, fi.ModTime().UnixNano(), fi.Size())
 	w.Header().Set("ETag", etag)
+
+	// Fire the trigger
+	if err := c.Runner("after_upload", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	return http.StatusOK, nil
 }
 
@@ -294,15 +305,15 @@ func resourcePatchHandler(c *RequestContext, w http.ResponseWriter, r *http.Requ
 	if action == "copy" {
 		err = c.User.FileSystem.Copy(src, dst)
 
-        if err := c.Runner("after_copy", src, dst, c.User); err != nil {
-            return http.StatusInternalServerError, err
-        }
+		if err := c.Runner("after_copy", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
 	} else {
 		err = c.User.FileSystem.Rename(src, dst)
 
-        if err := c.Runner("after_rename", src, dst, c.User); err != nil {
-            return http.StatusInternalServerError, err
-        }
+		if err := c.Runner("after_rename", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
 	}
 
 	return errorToHTTP(err, true), err
