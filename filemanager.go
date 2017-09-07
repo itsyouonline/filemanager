@@ -257,6 +257,8 @@ func New(database string, base User) (*FileManager, error) {
 			"after_save":     {base.TriggerCommand},
 			"before_publish": {base.TriggerCommand},
 			"after_publish":  {base.TriggerCommand},
+			"after_copy":     {base.TriggerCommand},
+			"after_rename":   {base.TriggerCommand},
 		}
 		err = db.Set("config", "commands", m.Commands)
 	}
@@ -479,7 +481,7 @@ func (r *Regexp) MatchString(s string) bool {
 }
 
 // Runner runs the commands for a certain event type.
-func (m FileManager) Runner(event string, path string, user *User) error {
+func (m FileManager) Runner(event string, path string, extra_path string, user *User) error {
 	commands := []string{}
 
 	// Get the commands from the File Manager instance itself.
@@ -511,6 +513,10 @@ func (m FileManager) Runner(event string, path string, user *User) error {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("REALNAME=%s", user.RealName))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("USEREMAIL=%s", user.Email))
 		cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
+
+		if extra_path != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("DESTINATION=%s", extra_path))
+		}
 
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
