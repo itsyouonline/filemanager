@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,8 +35,7 @@ func resourceHandler(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 		return resourceDeleteHandler(c, w, r)
 	case http.MethodPut:
 		// Before save command handler.
-		path := filepath.Join(string(c.User.FileSystem), r.URL.Path)
-		if err := c.Runner("before_save", path, "", c.User); err != nil {
+		if err := c.Runner("before_save", r.URL.Path, "", c.User); err != nil {
 			return http.StatusInternalServerError, err
 		}
 
@@ -47,7 +45,7 @@ func resourceHandler(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 		}
 
 		// After save command handler.
-		if err := c.Runner("after_save", "", path, c.User); err != nil {
+		if err := c.Runner("after_save", r.URL.Path, "", c.User); err != nil {
 			return http.StatusInternalServerError, err
 		}
 
@@ -263,10 +261,8 @@ func resourcePublishSchedule(c *RequestContext, w http.ResponseWriter, r *http.R
 }
 
 func resourcePublish(c *RequestContext, w http.ResponseWriter, r *http.Request) (int, error) {
-	path := filepath.Join(string(c.User.FileSystem), r.URL.Path)
-
 	// Before save command handler.
-	if err := c.Runner("before_publish", path, "", c.User); err != nil {
+	if err := c.Runner("before_publish", r.URL.Path, "", c.User); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
@@ -276,7 +272,7 @@ func resourcePublish(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Executed the before publish command.
-	if err := c.Runner("before_publish", path, "", c.User); err != nil {
+	if err := c.Runner("before_publish", r.URL.Path, "", c.User); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
