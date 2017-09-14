@@ -2,16 +2,51 @@ package filemanager
 
 import (
 	"crypto/rand"
+    "crypto/ecdsa"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
+    "fmt"
+    "os"
 
 	"golang.org/x/crypto/bcrypt"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 )
+
+var jwtPubKey *ecdsa.PublicKey
+
+
+const (
+	iyoPubKey = `-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAES5X8XrfKdx9gYayFITc89wad4usrk0n2
+7MjiGYvqalizeSWTHEpnd7oea9IQ8T5oJjMVH5cc0H5tFSKilFFeh//wngxIyny6
+6+Vq5t5B0V0Ehy01+2ceEon2Y0XDkIKv
+-----END PUBLIC KEY-----`
+)
+
+/*
+// staging
+const (
+	iyoPubKey = `-----BEGIN PUBLIC KEY-----
+MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEkmd07vxBqoCiHsaplIpjlonDeOnpvPam
+ORMdBcAlHNXbzwplcdK4qlZGPBz9mxDSrBOv9SZH+Et6r8gn9Fx/+ZjlvRwowqOU
+FpCIijAEx6A3BhfRUbmwl1evBKzWB/qw
+-----END PUBLIC KEY-----`
+)
+*/
+
+func init() {
+	var err error
+
+	jwtPubKey, err = jwt.ParseECPublicKeyFromPEM([]byte(iyoPubKey))
+	if err != nil {
+		fmt.Printf("failed to parse public key: %v\n", err)
+		os.Exit(1)
+	}
+}
 
 // authHandler proccesses the authentication for the user.
 func authHandler(c *RequestContext, w http.ResponseWriter, r *http.Request) (int, error) {
@@ -76,7 +111,7 @@ func printToken(c *RequestContext, w http.ResponseWriter) (int, error) {
 	// Builds the claims.
 	claims := claims{
 		u,
-		c.NoAuth,
+		true, // fake the NoAuth, we use Auth but by disabling here, we disable UI settings
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "File Manager",
@@ -109,10 +144,12 @@ func (e extractor) ExtractToken(r *http.Request) (string, error) {
 		return token, nil
 	}
 
-	cookie, err := r.Cookie("auth")
+	cookie, err := r.Cookie("caddyauth")
 	if err != nil {
 		return "", request.ErrNoTokenInRequest
 	}
+
+    fmt.Println(cookie)
 
 	return cookie.Value, nil
 }
@@ -125,24 +162,69 @@ func validateAuth(c *RequestContext, r *http.Request) (bool, *User) {
 		return true, c.User
 	}
 
-	keyFunc := func(token *jwt.Token) (interface{}, error) {
-		return c.key, nil
-	}
-	var claims claims
-	token, err := request.ParseFromRequestWithClaims(r,
-		extractor{},
-		&claims,
-		keyFunc,
-	)
+    var tokenStr = ""
 
-	if err != nil || !token.Valid {
+    for _, v := range r.Cookies() {
+        if v.Name == "caddyoauth" {
+            tokenStr = v.Value
+        }
+    }
+
+    // verify token
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+        if token.Method != jwt.SigningMethodES384 {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtPubKey, nil
+	})
+
+	if err != nil {
+        fmt.Printf("parse from request failed: %v\n", err)
 		return false, nil
 	}
 
-	u, ok := c.Users[claims.User.Username]
-	if !ok {
+	// get claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !(ok && token.Valid) {
+        fmt.Errorf("invalid token")
 		return false, nil
 	}
+
+    u := c.Users["admin"]
+    username, ok := claims["username"].(string)
+    if !ok {
+        fmt.Errorf("username not set, this should not happen")
+		return false, nil
+    }
+
+    scopes, ok := claims["scope"].([]interface{})
+    if !ok {
+        fmt.Errorf("scopes not set, this should not happen")
+		return false, nil
+    }
+
+    for _, value := range scopes {
+        scope := value.(string)
+
+        // this scope is not for this, out of bounds
+        if len(scope) < 12 {
+            continue
+        }
+
+        if scope[0:13] == "[user:email]:" {
+            u.Email = scope[13:]
+        }
+
+        if scope[0:12] == "[user:name]:" {
+            u.RealName = scope[12:]
+        }
+    }
+
+
+    u.Username = username
+    u.Admin = false
+
+    fmt.Printf("User logged in as %s (%s, %s)\n", u.Username, u.RealName, u.Email)
 
 	c.User = u
 	return true, u

@@ -23,7 +23,8 @@ function loggedIn () {
         parseToken(request.responseText)
         resolve()
       } else {
-        reject(new Error(request.responseText))
+        // reject(new Error(request.responseText))
+        window.location.href = '/login'
       }
     }
     request.onerror = () => reject(new Error('Could not finish the request'))
@@ -42,7 +43,8 @@ function login (user, password) {
         parseToken(request.responseText)
         resolve()
       } else {
-        reject(request.responseText)
+        // reject(request.responseText)
+        window.location.href = '/login'
       }
     }
     request.onerror = () => reject(new Error('Could not finish the request'))

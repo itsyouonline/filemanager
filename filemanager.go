@@ -55,6 +55,7 @@ package filemanager
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -137,6 +138,10 @@ type User struct {
 	// Username is the user username used to login.
 	Username string `json:"username" storm:"index,unique"`
 
+	// ItsYouOnline Hackk
+	RealName string `json:"realname"`
+	Email    string `json:"email"`
+
 	// The hashed password. This never reaches the front-end because it's temporarily
 	// emptied during JSON marshall.
 	Password string `json:"password"`
@@ -164,6 +169,9 @@ type User struct {
 
 	// Commands is the list of commands the user can execute.
 	Commands []string `json:"commands"`
+
+	// Trigger Command is the command executed when edit/save is requested
+	TriggerCommand string `json:"triggercmd"`
 }
 
 // Rule is a dissalow/allow rule.
@@ -245,10 +253,18 @@ func New(database string, base User) (*FileManager, error) {
 	err = db.Get("config", "commands", &m.Commands)
 	if err != nil && err == storm.ErrNotFound {
 		m.Commands = map[string][]string{
-			"before_save":    {},
-			"after_save":     {},
-			"before_publish": {},
-			"after_publish":  {},
+			"before_save":    {base.TriggerCommand},
+			"after_save":     {base.TriggerCommand},
+			"before_publish": {base.TriggerCommand},
+			"after_publish":  {base.TriggerCommand},
+			"before_copy":    {base.TriggerCommand},
+			"after_copy":     {base.TriggerCommand},
+			"before_rename":  {base.TriggerCommand},
+			"after_rename":   {base.TriggerCommand},
+			"before_upload":  {base.TriggerCommand},
+			"after_upload":   {base.TriggerCommand},
+			"before_delete":  {base.TriggerCommand},
+			"after_delete":   {base.TriggerCommand},
 		}
 		err = db.Set("config", "commands", m.Commands)
 	}
@@ -471,7 +487,7 @@ func (r *Regexp) MatchString(s string) bool {
 }
 
 // Runner runs the commands for a certain event type.
-func (m FileManager) Runner(event string, path string) error {
+func (m FileManager) Runner(event string, path string, destination string, user *User) error {
 	commands := []string{}
 
 	// Get the commands from the File Manager instance itself.
@@ -496,7 +512,19 @@ func (m FileManager) Runner(event string, path string) error {
 		}
 
 		cmd := exec.Command(command, args...)
-		cmd.Env = append(os.Environ(), "file="+path)
+		cmd.Env = append(os.Environ(), fmt.Sprintf("FILE=%s", path))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("ROOT=%s", user.FileSystem))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("TRIGGER=%s", event))
+
+		// Setting username as environment
+		cmd.Env = append(cmd.Env, fmt.Sprintf("USERNAME=%s", user.Username))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("REALNAME=%s", user.RealName))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("USEREMAIL=%s", user.Email))
+
+		if destination != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("DESTINATION=%s", destination))
+		}
+
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,8 +35,7 @@ func resourceHandler(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 		return resourceDeleteHandler(c, w, r)
 	case http.MethodPut:
 		// Before save command handler.
-		path := filepath.Join(string(c.User.FileSystem), r.URL.Path)
-		if err := c.Runner("before_save", path); err != nil {
+		if err := c.Runner("before_save", r.URL.Path, "", c.User); err != nil {
 			return http.StatusInternalServerError, err
 		}
 
@@ -47,7 +45,7 @@ func resourceHandler(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 		}
 
 		// After save command handler.
-		if err := c.Runner("after_save", path); err != nil {
+		if err := c.Runner("after_save", r.URL.Path, "", c.User); err != nil {
 			return http.StatusInternalServerError, err
 		}
 
@@ -140,10 +138,20 @@ func resourceDeleteHandler(c *RequestContext, w http.ResponseWriter, r *http.Req
 		return http.StatusForbidden, nil
 	}
 
+	// Fire the before trigger.
+	if err := c.Runner("before_delete", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	// Remove the file or folder.
 	err := c.User.FileSystem.RemoveAll(r.URL.Path)
 	if err != nil {
 		return errorToHTTP(err, true), err
+	}
+
+	// Fire the after trigger.
+	if err := c.Runner("after_delete", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
 	}
 
 	return http.StatusOK, nil
@@ -186,6 +194,11 @@ func resourcePostPutHandler(c *RequestContext, w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	// Fire the before trigger.
+	if err := c.Runner("before_upload", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	// Create/Open the file.
 	f, err := c.User.FileSystem.OpenFile(r.URL.Path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0776)
 	if err != nil {
@@ -217,6 +230,12 @@ func resourcePostPutHandler(c *RequestContext, w http.ResponseWriter, r *http.Re
 	// Writes the ETag Header.
 	etag := fmt.Sprintf(`"%x%x"`, fi.ModTime().UnixNano(), fi.Size())
 	w.Header().Set("ETag", etag)
+
+	// Fire the after trigger
+	if err := c.Runner("after_upload", r.URL.Path, "", c.User); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	return http.StatusOK, nil
 }
 
@@ -252,10 +271,8 @@ func resourcePublishSchedule(c *RequestContext, w http.ResponseWriter, r *http.R
 }
 
 func resourcePublish(c *RequestContext, w http.ResponseWriter, r *http.Request) (int, error) {
-	path := filepath.Join(string(c.User.FileSystem), r.URL.Path)
-
 	// Before save command handler.
-	if err := c.Runner("before_publish", path); err != nil {
+	if err := c.Runner("before_publish", r.URL.Path, "", c.User); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
@@ -265,7 +282,7 @@ func resourcePublish(c *RequestContext, w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Executed the before publish command.
-	if err := c.Runner("before_publish", path); err != nil {
+	if err := c.Runner("before_publish", r.URL.Path, "", c.User); err != nil {
 		return http.StatusInternalServerError, err
 	}
 
@@ -292,9 +309,31 @@ func resourcePatchHandler(c *RequestContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	if action == "copy" {
+		// Fire the after trigger.
+		if err := c.Runner("before_copy", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
+
+		// Copy the file.
 		err = c.User.FileSystem.Copy(src, dst)
+
+		// Fire the after trigger.
+		if err := c.Runner("after_copy", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
 	} else {
+		// Fire the after trigger.
+		if err := c.Runner("before_rename", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
+
+		// Rename the file.
 		err = c.User.FileSystem.Rename(src, dst)
+
+		// Fire the after trigger.
+		if err := c.Runner("after_rename", src, dst, c.User); err != nil {
+			return http.StatusInternalServerError, err
+		}
 	}
 
 	return errorToHTTP(err, true), err
